@@ -2,7 +2,7 @@
 
 # Uninstall the development copy of BatteryWatch
 
-DEV_ID="com.github.itayavra.batterywatch.dev"
+DEV_ID="com.github.mitko1239.batterywatch.dev"
 DEV_DIR="/tmp/batterywatch-dev"
 
 echo "Uninstalling BatteryWatch (Dev)..."

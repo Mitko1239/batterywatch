@@ -1,6 +1,6 @@
 # BatteryWatch
 
-[![Latest Release](https://img.shields.io/github/v/release/itayavra/batterywatch?color=4CAF50&label=Latest%20release&style=for-the-badge)](https://github.com/itayavra/batterywatch/releases)
+[![Latest Release (Remote)](https://img.shields.io/github/v/release/itayavra/batterywatch?color=4CAF50&label=Latest%20release&style=for-the-badge)](https://github.com/itayavra/batterywatch/releases)
 [![KDE Plasma 6](https://img.shields.io/badge/KDE-Plasma%206-blue?style=for-the-badge)](https://store.kde.org/p/2331781)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green?style=for-the-badge)](https://github.com/itayavra/batterywatch/blob/master/LICENSE)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow.svg?style=for-the-badge&logo=buy-me-a-coffee)](https://www.buymeacoffee.com/itayavra)
@@ -35,28 +35,28 @@
 
 ## Installation
 
-### From the KDE Store (Recommended)
+<!-- ### From the KDE Store (Recommended)
 1.  Right-click on your desktop or panel.
 2.  Select **Add Widgets...**
 3.  Click **Get New Widgets...** -> **Download New Plasma Widgets**.
-4.  Search for **"BatteryWatch"** and click **Install**.
+4.  Search for **"BatteryWatch"** and click **Install**. -->
 
-### Manual Installation
+<!-- ### Manual Installation
 1.  Download the latest `.plasmoid` release from the [Releases](https://github.com/itayavra/batterywatch/releases) page.
 2.  Run the following command:
     ```bash
     kpackagetool6 --type Plasma/Applet --install BatteryWatch.plasmoid
-    ```
+    ``` -->
 
 ## Building from Source
 
 ```bash
-git clone https://github.com/itayavra/batterywatch.git
+git clone https://github.com/mitko1239/batterywatch.git
 cd batterywatch
 # Zip the contents to create the plasmoid
-zip -r BatteryWatch.plasmoid .
+zip -r BatteryWatchPlus.plasmoid .
 # Install
-kpackagetool6 --type Plasma/Applet --install BatteryWatch.plasmoid
+kpackagetool6 --type Plasma/Applet --install BatteryWatchPlus.plasmoid
 ```
 
 ## Development

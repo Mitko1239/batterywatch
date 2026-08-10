@@ -38,8 +38,12 @@ PlasmoidItem {
         id: hidDevicesProvider
     }
 
+    HeadsetControlProvider {
+        id: headsetControlProvider
+    }
+
     // List of providers (in priority order)
-    property var providers: [upowerProvider, companionProvider, openLinkHubProvider, openRazerProvider, kdeConnectProvider, hidDevicesProvider]
+    property var providers: [upowerProvider, companionProvider, openLinkHubProvider, openRazerProvider, kdeConnectProvider, hidDevicesProvider, headsetControlProvider]
 
     // Debug mode
     property bool debugMode: Plasmoid.configuration.debugMode
@@ -76,6 +80,10 @@ PlasmoidItem {
         for (var i = 0; i < devices.length; i++) {
             var device = devices[i];
             if (hidden.indexOf(device.serial) !== -1)
+                continue;
+
+            // Skip unavailable battery entries in tray compact view.
+            if (typeof device.percentage !== "number" || device.percentage < 0)
                 continue;
 
             // Multi-battery device (e.g., AirPods)
@@ -179,7 +187,10 @@ PlasmoidItem {
                 // i18n: The delimiter when listing multiple batteries in the same device.
                 parts.join(i18n(", ")));
             } else {
-                line = i18n("%1: %2%", line, device.percentage);
+                if (typeof device.percentage === "number" && device.percentage >= 0)
+                    line = i18n("%1: %2%", line, device.percentage);
+                else
+                    line = i18n("%1: N/A", line);
             }
 
             lines.push(line);
@@ -448,7 +459,7 @@ PlasmoidItem {
                                         }
 
                                         PlasmaComponents.Label {
-                                            text: device.serial
+                                            text: device.secondaryText || device.serial
                                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                                             color: Kirigami.Theme.disabledTextColor
                                             Layout.fillWidth: true
@@ -525,7 +536,9 @@ PlasmoidItem {
                                         PlasmaComponents.Label {
                                             visible: !hasMultipleBatteries
                                             // i18n: %1 is the charge percentage value, %2 is an optional charging indicator suffix (e.g. " ⚡") or empty string. %% is a literal percent sign.
-                                            text: i18n("%1%%2", device.percentage, device.charging ? " ⚡" : "")
+                                            text: (typeof device.percentage === "number" && device.percentage >= 0)
+                                                ? i18n("%1%%2", device.percentage, device.charging ? " ⚡" : "")
+                                                : i18n("N/A")
                                             color: batteryColor(device.percentage, device.charging)
                                             font.bold: true
                                             Layout.minimumWidth: Kirigami.Units.gridUnit * 2

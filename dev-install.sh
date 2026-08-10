@@ -3,7 +3,7 @@
 # Install a development copy of BatteryWatch alongside the production version
 
 DEV_DIR="/tmp/batterywatch-dev"
-DEV_ID="com.github.itayavra.batterywatch.dev"
+DEV_ID="com.github.mitko1239.batterywatch.dev"
 SOURCE_DIR="$(dirname "$(readlink -f "$0")")"
 
 echo "Setting up BatteryWatch (Dev)..."
@@ -21,13 +21,13 @@ rm -rf "$DEV_DIR/dist" "$DEV_DIR/.git"
 chmod +x "$DEV_DIR/contents/bin/read_hid_devices"
 
 # Change the plugin ID and name to make it a separate widget
-sed -i 's/com.github.itayavra.batterywatch/'"$DEV_ID"'/g' "$DEV_DIR/metadata.json"
+sed -i 's/com.github.mitko1239.batterywatch/'"$DEV_ID"'/g' "$DEV_DIR/metadata.json"
 sed -i 's/"BatteryWatch"/"BatteryWatch (Dev)"/g' "$DEV_DIR/metadata.json"
 
 # Rename translation files to match the new plugin ID
 for locale_dir in "$DEV_DIR"/contents/locale/*/LC_MESSAGES/; do
     if [ -d "$locale_dir" ]; then
-        old_mo="$locale_dir/plasma_applet_com.github.itayavra.batterywatch.mo"
+        old_mo="$locale_dir/plasma_applet_com.github.mitko1239.batterywatch.mo"
         new_mo="$locale_dir/plasma_applet_${DEV_ID}.mo"
         if [ -f "$old_mo" ]; then
             mv "$old_mo" "$new_mo"

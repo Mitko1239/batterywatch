@@ -35,6 +35,7 @@ Item {
         var device = {
             name: "",
             serial: "",
+            secondaryText: "",
             nativePath: "",
             percentage: -1,
             charging: false,
@@ -87,6 +88,14 @@ Item {
         if (device.nativePath) {
             var path = device.nativePath.toLowerCase()
             var macMatch = path.match(/([0-9a-f]{2}[:\-_][0-9a-f]{2}[:\-_][0-9a-f]{2}[:\-_][0-9a-f]{2}[:\-_][0-9a-f]{2}[:\-_][0-9a-f]{2})/i)
+            var usbMatch = path.match(/(?:^|[^0-9a-f])([0-9a-f]{4})[:_\-]([0-9a-f]{4})(?:[^0-9a-f]|$)/i)
+            var modaliasMatch = path.match(/v([0-9a-f]{4})p([0-9a-f]{4})/i)
+
+            if (usbMatch) {
+                device.secondaryText = "0x" + usbMatch[1].toLowerCase() + ":0x" + usbMatch[2].toLowerCase()
+            } else if (modaliasMatch) {
+                device.secondaryText = "0x" + modaliasMatch[1].toLowerCase() + ":0x" + modaliasMatch[2].toLowerCase()
+            }
 
             if (path.indexOf("bluez") !== -1 ||
                 path.indexOf("bluetooth") !== -1 ||

@@ -17,11 +17,11 @@
         "Description[pl]": "Monitoruj poziom baterii wszystkich podłączonych urządzeń",
         "Description[he]": "צפה באחוז הסוללה של המכשירים המחוברים",
         "Icon": "/icons/battery-monitor.png",
-        "Id": "com.github.itayavra.batterywatch",
-        "Name": "BatteryWatch",
-        "Name[he]": "BatteryWatch",
-        "Version": "0.3.1",
-        "Website": "https://github.com/itayavra/batterywatch"
+        "Id": "com.github.mitko1239.batterywatch",
+        "Name": "BatteryWatchPlus",
+        "Name[he]": "BatteryWatchPlus",
+        "Version": "0.3.101",
+        "Website": "https://github.com/mitko1239/batterywatch"
     },
     "KPackageStructure": "Plasma/Applet",
     "X-Plasma-API-Minimum-Version": "6.0"
