@@ -32,6 +32,7 @@
 | **OpenRazer** | Razer peripherals via [OpenRazer](https://openrazer.github.io/) |
 | **KDE Connect** | Battery levels of paired KDE Connect devices (phones, tablets, etc), with easy unpair action |
 | **HID Devices** | Peripherals read directly via Linux HID (currently supports Steam Controller 2) |
+| **HeadsetControl** | Peripherals read via headsetcontrol (currently only tested with SteelSeries Arctis Nova 7 headset) |
 
 ## Installation
 
