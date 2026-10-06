@@ -2,6 +2,10 @@
     "KPlugin": {
         "Authors": [
             {
+                "Name": "Itay Avra",
+                "Name[hu]": "Itay Avraham",
+                "Name[pl]": "Itay Avraham",
+                "Name[he]": "Itay Avraham",
                 "Email": "itay.avra@gmail.com",
                 "Email[hu]": "itay.avra@gmail.com",
                 "Email[pl]": "itay.avra@gmail.com",
@@ -13,6 +17,7 @@
         "Category[pl]": "Szczegóły Systemowe",
         "Category[he]": "מידע על המערכת",
         "Description": "Monitor battery levels of all connected devices",
+        "Description[de]": "Überwacht die Akkustände aller verbundenen Geräte",
         "Description[hu]": "Csatlakoztatott eszközök akkumulátorszintjének megjelenítése",
         "Description[pl]": "Monitoruj poziom baterii wszystkich podłączonych urządzeń",
         "Description[he]": "צפה באחוז הסוללה של המכשירים המחוברים",
@@ -20,7 +25,7 @@
         "Id": "com.github.mitko1239.batterywatch",
         "Name": "BatteryWatchPlus",
         "Name[he]": "BatteryWatchPlus",
-        "Version": "0.3.101",
+        "Version": "0.3.201",
         "Website": "https://github.com/mitko1239/batterywatch"
     },
     "KPackageStructure": "Plasma/Applet",
