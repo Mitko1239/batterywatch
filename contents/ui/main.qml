@@ -170,7 +170,17 @@ PlasmoidItem {
     // deviceProviders: array of device arrays in priority order (first = highest priority)
     function mergeDevices(deviceProviders) {
         var merged = [];
-        var seenIds = {};
+        var indexById = {};
+
+        function batteryDetailsScore(device) {
+            if (!device)
+                return 0;
+            if (Array.isArray(device.batteries) && device.batteries.length > 1)
+                return 2;
+            if (typeof device.percentage === "number" && device.percentage >= 0)
+                return 1;
+            return 0;
+        }
 
         for (var providerIdx = 0; providerIdx < deviceProviders.length; providerIdx++) {
             var devices = deviceProviders[providerIdx];
@@ -179,9 +189,25 @@ PlasmoidItem {
                 var device = devices[i];
                 var id = DeviceUtils.deviceIdentity(device);
 
-                if (id && !seenIds[id]) {
+                if (!id)
+                    continue;
+
+                if (indexById[id] === undefined) {
+                    indexById[id] = merged.length;
                     merged.push(device);
-                    seenIds[id] = true;
+                    continue;
+                }
+
+                var idx = indexById[id];
+                var existing = merged[idx];
+                var existingScore = batteryDetailsScore(existing);
+                var candidateScore = batteryDetailsScore(device);
+
+                // Keep provider order, but allow richer battery details to replace a weaker row.
+                if (candidateScore > existingScore) {
+                    if (root.debugMode)
+                        console.log(i18n("BatteryWatch: Replacing %1 device '%2' with richer data from %3", existing.source || "unknown", id, device.source || "unknown"))
+                    merged[idx] = device;
                 }
             }
         }
