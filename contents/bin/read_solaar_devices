@@ -153,8 +153,51 @@ def solaar_interpreter():
     return parse_shebang_python(first[2:].decode("utf-8", "replace").strip())
 
 
+SOLAAR_FLATPAK_ID = "io.github.pwr_solaar.solaar"
+
+
+def solaar_flatpak():
+    """The flatpak binary when Solaar is installed from Flathub, else None.
+
+    The flatpak's library lives inside its sandbox (no host python can import
+    it, no `solaar` on PATH), but the app has devices=all, so the helper can
+    run in there with the flatpak's own python3.
+    """
+    import shutil
+    import subprocess
+
+    binary = shutil.which("flatpak")
+    if binary is None:
+        return None
+    try:
+        found = subprocess.run(
+            [binary, "info", SOLAAR_FLATPAK_ID],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return binary if found.returncode == 0 else None
+
+
+def flatpak_argv(flatpak):
+    """Runs this script's source inside the Solaar flatpak.
+
+    The source goes in via -c: the sandbox has no access to the plasmoid's
+    directory, so the file path would not resolve in there.
+    """
+    with open(os.path.abspath(__file__), encoding="utf-8") as stream:
+        source = stream.read()
+    return [
+        flatpak, "run", f"--env={REEXEC_ENV}=1", "--command=python3", SOLAAR_FLATPAK_ID,
+        "-c", source, *sys.argv[1:],
+    ]
+
+
 def load_modules():
-    """Imports logitech_receiver; re-execs with Solaar's python for pipx installs."""
+    """Imports logitech_receiver; re-execs with Solaar's python for pipx and
+    flatpak installs."""
     try:
         from logitech_receiver import base, device, receiver
 
@@ -168,6 +211,11 @@ def load_modules():
         debug(f"solaar library not importable here, re-exec with {python}")
         os.environ[REEXEC_ENV] = "1"
         os.execve(python, [python, os.path.abspath(__file__), *sys.argv[1:]], os.environ)
+    flatpak = None if os.environ.get(REEXEC_ENV) else solaar_flatpak()
+    if flatpak:
+        debug(f"solaar library not importable here, re-exec inside the {SOLAAR_FLATPAK_ID} flatpak")
+        os.environ[REEXEC_ENV] = "1"
+        os.execve(flatpak, flatpak_argv(flatpak), os.environ)
     raise SolaarNotImportable(
         "Solaar's Python library (logitech_receiver) is not importable. "
         "Install Solaar via your distribution's package manager, or `python3 -m pip install solaar`."

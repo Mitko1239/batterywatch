@@ -635,12 +635,49 @@ def test_load_modules_import_error_no_cli():
         raise rsd.SolaarNotImportable("unreachable")
 
     with mock.patch.dict(sys.modules, {"logitech_receiver": None}), \
-            mock.patch.object(rsd, "solaar_interpreter", lambda: None):
+            mock.patch.object(rsd, "solaar_interpreter", lambda: None), \
+            mock.patch.object(rsd, "solaar_flatpak", lambda: None):
         try:
             rsd.load_modules()
         except rsd.SolaarNotImportable as e:
             assert "not importable" in str(e)
             assert "pip install" in str(e)  # the user-facing hint
+        else:
+            raise AssertionError("expected SolaarNotImportable")
+
+
+def test_load_modules_reexecs_inside_the_solaar_flatpak():
+    calls = []
+    with mock.patch.dict(sys.modules, {"logitech_receiver": None}), \
+            mock.patch.object(rsd, "solaar_interpreter", lambda: None), \
+            mock.patch.object(rsd, "solaar_flatpak", lambda: "/usr/bin/flatpak"), \
+            mock.patch.object(rsd.os, "execve", lambda *a: calls.append(a)), \
+            mock.patch.dict(os.environ, {}, clear=False):
+        os.environ.pop("_BW_READ_SOLAR_DEVICES_REEXEC", None)
+        try:
+            rsd.load_modules()
+        except rsd.SolaarNotImportable:
+            pass  # execve is mocked, so the call falls through
+    assert len(calls) == 1
+    binary, argv, _env = calls[0]
+    assert binary == "/usr/bin/flatpak"
+    assert argv[:5] == ["/usr/bin/flatpak", "run", "--env=_BW_READ_SOLAR_DEVICES_REEXEC=1",
+                        "--command=python3", rsd.SOLAAR_FLATPAK_ID]
+    # the script source is passed inline: the sandbox cannot see the plasmoid dir
+    assert argv[5] == "-c" and "def load_modules" in argv[6]
+
+
+def test_load_modules_skips_the_flatpak_once_reexeced():
+    # inside the flatpak (flag set) a missing library must not re-exec again
+    with mock.patch.dict(sys.modules, {"logitech_receiver": None}), \
+            mock.patch.object(rsd, "solaar_interpreter", lambda: None), \
+            mock.patch.object(rsd, "solaar_flatpak", lambda: "/usr/bin/flatpak"), \
+            mock.patch.object(rsd.os, "execve", lambda *a: (_ for _ in ()).throw(AssertionError("re-exec"))), \
+            mock.patch.dict(os.environ, {"_BW_READ_SOLAR_DEVICES_REEXEC": "1"}):
+        try:
+            rsd.load_modules()
+        except rsd.SolaarNotImportable as e:
+            assert "not importable" in str(e)
         else:
             raise AssertionError("expected SolaarNotImportable")
 

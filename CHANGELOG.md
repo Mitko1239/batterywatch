@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- **Solaar integration found nothing with the Flatpak Solaar** — the helper only looked for Solaar's library in the host Python or behind a `solaar` CLI on `PATH`, and a Flathub install (`io.github.pwr_solaar.solaar`) offers neither, so every poll reported `solaar-missing` and the integration stayed empty. The helper now re-runs itself inside the Solaar flatpak with the flatpak's own `python3` (the app already has `devices=all`); the script source is passed inline because the sandbox cannot see the plasmoid's directory. This matters most for a wired-charging Logitech mouse: the kernel's receiver battery node reports state `unknown` while the mouse is on its cable, so UPower never shows it charging, whereas Solaar reads it over the cable and reports the charge correctly. A flatpak run adds about a second per poll
+
 ## [0.3.2] - 2026-10-05
 
 ### Added
