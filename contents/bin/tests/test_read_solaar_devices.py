@@ -630,12 +630,50 @@ def test_shebang_python_rejects_env_and_shims():
     assert rsd.parse_shebang_python("env -S /opt/pyvenv/bin/python") == "/opt/pyvenv/bin/python"
 
 
+def test_solaar_lib_dirs_finds_the_distro_share_lib():
+    # Debian/PPA layout: /usr/bin/solaar + /usr/share/solaar/lib/logitech_receiver
+    with tempfile.TemporaryDirectory() as prefix:
+        os.makedirs(os.path.join(prefix, "bin"))
+        binary = os.path.join(prefix, "bin", "solaar")
+        open(binary, "w").close()
+        lib = os.path.join(prefix, "share", "solaar", "lib")
+        os.makedirs(os.path.join(lib, "logitech_receiver"))
+        open(os.path.join(lib, "logitech_receiver", "__init__.py"), "w").close()
+        with mock.patch("shutil.which", lambda name: binary):
+            assert rsd.solaar_lib_dirs() == [lib]
+
+
+def test_solaar_lib_dirs_skips_prefixes_without_the_library():
+    with tempfile.TemporaryDirectory() as prefix:
+        os.makedirs(os.path.join(prefix, "bin"))
+        binary = os.path.join(prefix, "bin", "solaar")
+        open(binary, "w").close()
+        with mock.patch("shutil.which", lambda name: binary):
+            assert rsd.solaar_lib_dirs() == []
+    with mock.patch("shutil.which", lambda name: None):
+        assert rsd.solaar_lib_dirs() == []
+
+
+def test_load_modules_uses_the_distro_lib_dir_before_any_reexec():
+    # a deb install must be read in-process: no flatpak run (tray icon, ~1s)
+    found = rsd._Modules("base", "device", "receiver")
+    imports = iter([None, found])
+    with mock.patch.object(rsd, "import_modules", lambda: next(imports)), \
+            mock.patch.object(rsd, "solaar_lib_dirs", lambda: ["/usr/share/solaar/lib"]), \
+            mock.patch.object(rsd.os, "execve", lambda *a: (_ for _ in ()).throw(AssertionError("re-exec"))), \
+            mock.patch.object(sys, "path", list(sys.path)):
+        assert rsd.load_modules() is found
+        assert sys.path[0] == "/usr/share/solaar/lib"
+
+
 def test_load_modules_import_error_no_cli():
     def fail_import():
         raise rsd.SolaarNotImportable("unreachable")
 
     with mock.patch.dict(sys.modules, {"logitech_receiver": None}), \
-            mock.patch.object(rsd, "solaar_interpreter", lambda: None):
+            mock.patch.object(rsd, "solaar_lib_dirs", lambda: []), \
+            mock.patch.object(rsd, "solaar_interpreter", lambda: None), \
+            mock.patch.object(rsd, "solaar_flatpak", lambda: None):
         try:
             rsd.load_modules()
         except rsd.SolaarNotImportable as e:
@@ -645,9 +683,48 @@ def test_load_modules_import_error_no_cli():
             raise AssertionError("expected SolaarNotImportable")
 
 
+def test_load_modules_reexecs_inside_the_solaar_flatpak():
+    calls = []
+    with mock.patch.dict(sys.modules, {"logitech_receiver": None}), \
+            mock.patch.object(rsd, "solaar_lib_dirs", lambda: []), \
+            mock.patch.object(rsd, "solaar_interpreter", lambda: None), \
+            mock.patch.object(rsd, "solaar_flatpak", lambda: "/usr/bin/flatpak"), \
+            mock.patch.object(rsd.os, "execve", lambda *a: calls.append(a)), \
+            mock.patch.dict(os.environ, {}, clear=False):
+        os.environ.pop("_BW_READ_SOLAR_DEVICES_REEXEC", None)
+        try:
+            rsd.load_modules()
+        except rsd.SolaarNotImportable:
+            pass  # execve is mocked, so the call falls through
+    assert len(calls) == 1
+    binary, argv, _env = calls[0]
+    assert binary == "/usr/bin/flatpak"
+    assert argv[:5] == ["/usr/bin/flatpak", "run", "--env=_BW_READ_SOLAR_DEVICES_REEXEC=1",
+                        "--command=python3", rsd.SOLAAR_FLATPAK_ID]
+    # the script source is passed inline: the sandbox cannot see the plasmoid dir
+    assert argv[5] == "-c" and "def load_modules" in argv[6]
+
+
+def test_load_modules_skips_the_flatpak_once_reexeced():
+    # inside the flatpak (flag set) a missing library must not re-exec again
+    with mock.patch.dict(sys.modules, {"logitech_receiver": None}), \
+            mock.patch.object(rsd, "solaar_lib_dirs", lambda: []), \
+            mock.patch.object(rsd, "solaar_interpreter", lambda: None), \
+            mock.patch.object(rsd, "solaar_flatpak", lambda: "/usr/bin/flatpak"), \
+            mock.patch.object(rsd.os, "execve", lambda *a: (_ for _ in ()).throw(AssertionError("re-exec"))), \
+            mock.patch.dict(os.environ, {"_BW_READ_SOLAR_DEVICES_REEXEC": "1"}):
+        try:
+            rsd.load_modules()
+        except rsd.SolaarNotImportable as e:
+            assert "not importable" in str(e)
+        else:
+            raise AssertionError("expected SolaarNotImportable")
+
+
 def test_load_modules_reexec_guard_blocks_a_second_attempt():
     # the re-exec flag is set: the fallback interpreter will not be tried again
     with mock.patch.dict(sys.modules, {"logitech_receiver": None}), \
+            mock.patch.object(rsd, "solaar_lib_dirs", lambda: []), \
             mock.patch.object(rsd, "solaar_interpreter", lambda: "/venv/python"), \
             mock.patch.object(rsd.os.path, "isfile", lambda p: True), \
             mock.patch.dict(os.environ, {"_BW_READ_SOLAR_DEVICES_REEXEC": "1"}):

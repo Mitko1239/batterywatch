@@ -153,14 +153,91 @@ def solaar_interpreter():
     return parse_shebang_python(first[2:].decode("utf-8", "replace").strip())
 
 
-def load_modules():
-    """Imports logitech_receiver; re-execs with Solaar's python for pipx installs."""
+def solaar_lib_dirs():
+    """Library dirs next to the installed solaar CLI, as its launcher finds them.
+
+    Debian/Ubuntu (and the Solaar PPA) ship logitech_receiver under
+    /usr/share/solaar/lib, off sys.path; /usr/bin/solaar adds it at startup
+    (init_paths), so the host python3 cannot import it without the same step.
+    """
+    import shutil
+
+    binary = shutil.which("solaar")
+    if binary is None:
+        return []
+    prefix = os.path.dirname(os.path.dirname(os.path.realpath(binary)))
+    candidates = [os.path.join(prefix, "lib"), os.path.join(prefix, "share", "solaar", "lib")]
+    return [
+        location for location in candidates
+        if os.path.isfile(os.path.join(location, "logitech_receiver", "__init__.py"))
+    ]
+
+
+SOLAAR_FLATPAK_ID = "io.github.pwr_solaar.solaar"
+
+
+def solaar_flatpak():
+    """The flatpak binary when Solaar is installed from Flathub, else None.
+
+    The flatpak's library lives inside its sandbox (no host python can import
+    it, no `solaar` on PATH), but the app has devices=all, so the helper can
+    run in there with the flatpak's own python3.
+    """
+    import shutil
+    import subprocess
+
+    binary = shutil.which("flatpak")
+    if binary is None:
+        return None
+    try:
+        found = subprocess.run(
+            [binary, "info", SOLAAR_FLATPAK_ID],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return binary if found.returncode == 0 else None
+
+
+def flatpak_argv(flatpak):
+    """Runs this script's source inside the Solaar flatpak.
+
+    The source goes in via -c: the sandbox has no access to the plasmoid's
+    directory, so the file path would not resolve in there.
+    """
+    with open(os.path.abspath(__file__), encoding="utf-8") as stream:
+        source = stream.read()
+    return [
+        flatpak, "run", f"--env={REEXEC_ENV}=1", "--command=python3", SOLAAR_FLATPAK_ID,
+        "-c", source, *sys.argv[1:],
+    ]
+
+
+def import_modules():
+    """The logitech_receiver modules, or None when they do not import."""
     try:
         from logitech_receiver import base, device, receiver
 
         return _Modules(base, device, receiver)
     except ImportError:
-        pass
+        return None
+
+
+def load_modules():
+    """Imports logitech_receiver (from sys.path, then the distro package's own
+    lib dir); re-execs with Solaar's python for pipx and flatpak installs."""
+    modules = import_modules()
+    if modules:
+        return modules
+    for location in solaar_lib_dirs():
+        debug(f"solaar library not on sys.path, trying {location}")
+        sys.path.insert(0, location)
+        modules = import_modules()
+        if modules:
+            return modules
+        sys.path.remove(location)
     python = solaar_interpreter()
     if python and python != sys.executable and os.path.isfile(python):
         if os.environ.get(REEXEC_ENV):
@@ -168,6 +245,11 @@ def load_modules():
         debug(f"solaar library not importable here, re-exec with {python}")
         os.environ[REEXEC_ENV] = "1"
         os.execve(python, [python, os.path.abspath(__file__), *sys.argv[1:]], os.environ)
+    flatpak = None if os.environ.get(REEXEC_ENV) else solaar_flatpak()
+    if flatpak:
+        debug(f"solaar library not importable here, re-exec inside the {SOLAAR_FLATPAK_ID} flatpak")
+        os.environ[REEXEC_ENV] = "1"
+        os.execve(flatpak, flatpak_argv(flatpak), os.environ)
     raise SolaarNotImportable(
         "Solaar's Python library (logitech_receiver) is not importable. "
         "Install Solaar via your distribution's package manager, or `python3 -m pip install solaar`."
